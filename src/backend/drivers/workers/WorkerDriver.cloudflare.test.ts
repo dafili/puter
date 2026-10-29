@@ -3,20 +3,20 @@
  *
  * This file is part of Puter.
  *
- * Puter is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
- * by the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Puter is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this program. If not, see
+ * [https://www.gnu.org/licenses/](https://www.gnu.org/licenses/).
  */
-
 
 /**
  * WorkerDriver with a deploy backend configured.
@@ -593,37 +593,35 @@ describe('WorkerDriver.create with a configured deploy backend', () => {
             expect(putCalls()).toHaveLength(1);
         });
 
-        it('refuses a file another user owns, even with manage on it', async () => {
+        it('deploys a readable file another user wrote, as the deployer', async () => {
             const owner = await makeUser();
-            const deployer = await makeUser();
-            const path = `/${owner.user.username}/site.worker.js`;
+            const writer = await makeUser();
+            const path = `/${writer.user.username}/site.worker.js`;
             const entry = await writeSource(
-                owner.actor,
-                owner.user.id,
+                writer.actor,
+                writer.user.id,
                 path,
-                'v1',
+                'export default {}',
             );
             await server.services.acl.setUserUser(
+                writer.actor,
                 owner.actor,
-                deployer.actor,
                 {
                     path: entry.path,
                     resolveAncestors: () =>
                         server.services.fs.getAncestorChain(entry.path),
                 },
-                'manage',
+                'read',
             );
-            const scriptName = `dt-foreign-${deployer.user.username}`;
-            await expect(
-                deployTo(deployer.actor, path, scriptName),
-            ).rejects.toMatchObject({
-                statusCode: 403,
-                legacyCode: 'forbidden',
-            });
-            expect(putCalls()).toHaveLength(0);
+            const scriptName = `dt-shared-${owner.user.username}`;
+            expect(await deployTo(owner.actor, path, scriptName)).toMatchObject(
+                { success: true },
+            );
+            expect(putCalls()).toHaveLength(1);
             expect(
-                await workerSession(deployer.user.id, scriptName),
-            ).toBeNull();
+                await workerSession(owner.user.id, scriptName),
+            ).not.toBeNull();
+            expect(await workerSession(writer.user.id, scriptName)).toBeNull();
         });
     });
 

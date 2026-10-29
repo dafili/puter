@@ -492,7 +492,13 @@ export class WorkerDriver extends PuterDriver {
                 : null;
         // A worker is redeployed from its file as the worker's owner, so a
         // file someone else owns would let them swap the code it runs.
-        if (loaded?.fsEntry && loaded.fsEntry.userId !== actor.user.id) {
+        // Internal targets (site workers) deploy as the site owner and take
+        // files written by anyone with write access to the site.
+        if (
+            !deployTarget &&
+            loaded?.fsEntry &&
+            loaded.fsEntry.userId !== actor.user.id
+        ) {
             throw new HttpError(
                 403,
                 'A worker can only be deployed from a file you own',
